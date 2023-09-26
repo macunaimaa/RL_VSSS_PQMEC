@@ -56,7 +56,7 @@ class Environment(Process):
             action = self.child_conn.recv()
 
             # Diagnostic print
-            print("Received action:", action)
+            #print("Received action:", action)
 
             # Ensure the action is an array with shape (2,)
             action = np.array(action).flatten()
@@ -67,7 +67,7 @@ class Environment(Process):
                 self.env.render()
 
             # Diagnostic print
-            print("Passing action to env.step:", action)
+            #print("Passing action to env.step:", action)
 
             state, reward, done, info = self.env.step(action)
             state = np.reshape(state, [1, self.state_size])
@@ -442,17 +442,19 @@ class PPOAgent:
 
         while self.episode < self.EPISODES:
             predictions_list = self.Actor.predict(np.reshape(state, [num_worker, self.state_size[0]]))
-            print("predictions_list", predictions_list)
-            print("predictions_list.shape", predictions_list.shape)
+            #print("predictions_list", predictions_list)
+            #print("---------------predictions_list.shape PT0----------------", predictions_list.shape)
             #actions_list = [np.random.choice(self.action_size, p=i) for i in predictions_list]
             actions_list = predictions_list
-
             for worker_id, parent_conn in enumerate(parent_conns):
                 parent_conn.send(actions_list[worker_id])
                 action_onehot = np.zeros([self.action_size])
-                action_onehot[actions_list[worker_id]] = 1
+
+                #action_onehot[actions_list[worker_id]] = 1
+
                 actions[worker_id].append(action_onehot)
                 predictions[worker_id].append(predictions_list[worker_id])
+                #print("done pt1")
 
             for worker_id, parent_conn in enumerate(parent_conns):
                 next_state, reward, done, _ = parent_conn.recv()
@@ -463,15 +465,17 @@ class PPOAgent:
                 dones[worker_id].append(done)
                 state[worker_id] = next_state
                 score[worker_id] += reward
+ 
 
                 if done:
                     average, SAVING = self.PlotModel(score[worker_id], self.episode)
                     print("episode: {}/{}, worker: {}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, worker_id, score[worker_id], average, SAVING))
-                    self.writer.add_scalar(f'Workers:{num_worker}/score_per_episode', score[worker_id], self.episode)
-                    self.writer.add_scalar(f'Workers:{num_worker}/learning_rate', self.learning_rate, self.episode)
+                    #self.writer.add_scalar(f'Workers:{num_worker}/score_per_episode', score[worker_id], self.episode)
+                    #self.writer.add_scalar(f'Workers:{num_worker}/learning_rate', self.learning_rate, self.episode)
                     score[worker_id] = 0
                     if(self.episode < self.EPISODES):
                         self.episode += 1
+
                         
             for worker_id in range(num_worker):
                 if len(states[worker_id]) >= self.Training_batch:
@@ -483,7 +487,6 @@ class PPOAgent:
                     rewards[worker_id] = []
                     dones[worker_id] = []
                     predictions[worker_id] = []
-
         # terminating processes after while loop
         works.append(work)
         for work in works:
@@ -515,5 +518,5 @@ if __name__ == "__main__":
     agent = PPOAgent(env_name)
     #agent.run() # train as PPO, train every epesode
     #agent.run_batch() # train as PPO, train every batch, trains better
-    agent.run_multiprocesses(num_worker = 10)  # train PPO multiprocessed (fastest)
+    agent.run_multiprocesses(num_worker = 4)  # train PPO multiprocessed (fastest)
     #agent.test()
