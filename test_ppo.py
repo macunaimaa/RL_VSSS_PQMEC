@@ -26,6 +26,7 @@ from tensorflow.keras.layers import Input, Dense
 from tensorflow.keras.optimizers import Adam, RMSprop
 from tensorflow.keras import backend as K
 import copy
+import pdb
 
 from threading import Thread, Lock
 from multiprocessing import Process, Pipe
@@ -85,12 +86,15 @@ class Actor_Model:
         X_input = Input(input_shape)
         self.action_space = action_space
 
-        X = Dense(512, activation="relu", kernel_initializer=tf.random_normal_initializer(stddev=0.01))(X_input)
+        X = Dense(256, activation="relu", kernel_initializer=tf.random_normal_initializer(stddev=0.01))(X_input)
+        X = Dense(256, activation="relu", kernel_initializer=tf.random_normal_initializer(stddev=0.01))(X)
+        X = Dense(512, activation="relu", kernel_initializer=tf.random_normal_initializer(stddev=0.01))(X)
+        X = Dense(512, activation="relu", kernel_initializer=tf.random_normal_initializer(stddev=0.01))(X)
+        X = Dense(512, activation="relu", kernel_initializer=tf.random_normal_initializer(stddev=0.01))(X)
         X = Dense(256, activation="relu", kernel_initializer=tf.random_normal_initializer(stddev=0.01))(X)
         X = Dense(64, activation="relu", kernel_initializer=tf.random_normal_initializer(stddev=0.01))(X)
         # Changing activation to tanh for continuous output in range [-1, 1]
         output = Dense(self.action_space, activation="tanh")(X)
-
         self.Actor = Model(inputs = X_input, outputs = output)
         #Adam is not callable
         #self.Actor.compile(loss=self.ppo_loss, optimizer=optimizer(learning_rate=learning_rate))
@@ -132,7 +136,11 @@ class Critic_Model:
         X_input = Input(input_shape)
         old_values = Input(shape=(1,))
 
-        V = Dense(512, activation="relu", kernel_initializer='he_uniform')(X_input)
+        V = Dense(256, activation="relu", kernel_initializer='he_uniform')(X_input)
+        V = Dense(256, activation="relu", kernel_initializer='he_uniform')(V)
+        V = Dense(512, activation="relu", kernel_initializer='he_uniform')(V)
+        V = Dense(512, activation="relu", kernel_initializer='he_uniform')(V)
+        V = Dense(512, activation="relu", kernel_initializer='he_uniform')(V)
         V = Dense(256, activation="relu", kernel_initializer='he_uniform')(V)
         V = Dense(64, activation="relu", kernel_initializer='he_uniform')(V)
         value = Dense(1, activation=None)(V)
@@ -208,21 +216,39 @@ class PPOAgent:
         self.Critic_name = f"{self.env_name}_PPO_Critic.h5"
 
         
-    def act(self, state):
+
+    def act(self, state):       #O problema parece ser essa mudança na funcao act essa aqui 
+    #                             nao funciona com o env do gym e os robos nao aparecem appos a primeira epoca
         """ example:
         pred = np.array([0.05, 0.85, 0.1])
         action_size = 3
         np.random.choice(a, p=pred)
         result>>> 1, because it have the highest probability to be taken
         """
-        # Use the network to predict the next action to take, using the model
+        #Use the network to predict the next action to take, using the model
 
-        action_probabilities = self.Actor.predict(state)
-        action = np.argmax(action_probabilities[0])
+        action = self.Actor.predict(state)
+        
+        action= np.squeeze(action)
+        
+        return action, action, action
 
-        action_onehot = np.zeros([self.action_size])
-        action_onehot[action] = 1
-        return action, action_onehot, action_probabilities
+    # def act(self, state):
+    #     """ example:
+    #     pred = np.array([0.05, 0.85, 0.1])
+    #     action_size = 3
+    #     np.random.choice(a, p=pred)
+    #     result>>> 1, because it have the highest probability to be taken
+    #     """
+    #     #Use the network to predict the next action to take, using the model
+
+    #     action_probabilities = self.Actor.predict(state)
+    #     print(action_probabilities)
+    #     #action = np.argmax(action_probabilities[0])
+    #     action = np.array(action_probabilities)
+    #     action_onehot = np.zeros([self.action_size])
+    #     action_onehot = [1.0, 1.0]
+    #     return action, action_onehot, action_probabilities
 
     def discount_rewards(self, reward):#gaes is better
         # Compute the gamma-discounted rewards over an episode
@@ -385,13 +411,23 @@ class PPOAgent:
             for t in range(self.Training_batch):
                 self.env.render()
                 # Actor picks an action
+                # Actor picks an action
                 action, action_onehot, prediction = self.act(state)
-                action_onehot.reshape([2,])
-                prediction.reshape([2,])
-                print(action.shape, action_onehot.shape, prediction.shape)
-                print(action)
+
+                # Diagnostic print
+                #print("Received action:", action)
+
+                # Ensure the action is an array with shape (2,)
+                print("action.shape", action.shape)
+                print("action type", type(action))
+                print("action:", action)
+                action.reshape([2,])
+                assert action.shape == (2,), f"Unexpected action shape: {action.shape}"
+
+
                 # Retrieve new state, reward, and whether the state is terminal
                 next_state, reward, done, _ = self.env.step(action)
+
                 # Memorize (state, action, reward) for training
                 states.append(state)
                 next_states.append(np.reshape(next_state, [1, self.state_size[0]]))
@@ -427,6 +463,8 @@ class PPOAgent:
             works.append(work)
             parent_conns.append(parent_conn)
             child_conns.append(child_conn)
+   
+   
 
         states =        [[] for _ in range(num_worker)]
         next_states =   [[] for _ in range(num_worker)]
@@ -456,6 +494,7 @@ class PPOAgent:
                 predictions[worker_id].append(predictions_list[worker_id])
                 #print("done pt1")
 
+
             for worker_id, parent_conn in enumerate(parent_conns):
                 next_state, reward, done, _ = parent_conn.recv()
 
@@ -466,7 +505,6 @@ class PPOAgent:
                 state[worker_id] = next_state
                 score[worker_id] += reward
  
-
                 if done:
                     average, SAVING = self.PlotModel(score[worker_id], self.episode)
                     print("episode: {}/{}, worker: {}, score: {}, average: {:.2f} {}".format(self.episode, self.EPISODES, worker_id, score[worker_id], average, SAVING))
@@ -517,6 +555,6 @@ if __name__ == "__main__":
     env_name = 'VSS-v0'
     agent = PPOAgent(env_name)
     #agent.run() # train as PPO, train every epesode
-    #agent.run_batch() # train as PPO, train every batch, trains better
-    agent.run_multiprocesses(num_worker = 4)  # train PPO multiprocessed (fastest)
+    agent.run_batch() # train as PPO, train every batch, trains better
+    #agent.run_multiprocesses(num_worker = 4)  # train PPO multiprocessed (fastest)
     #agent.test()
