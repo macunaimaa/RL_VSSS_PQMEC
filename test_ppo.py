@@ -358,7 +358,6 @@ class PPOAgent:
             # Instantiate or reset games memory
             states, next_states, actions, rewards, predictions, dones = [], [], [], [], [], []
             while not done:
-                self.env.render()
                 # Actor picks an action
                 action, action_onehot, prediction = self.act(state)
 
@@ -409,7 +408,6 @@ class PPOAgent:
             # Instantiate or reset games memory
             states, next_states, actions, rewards, predictions, dones = [], [], [], [], [], []
             for t in range(self.Training_batch):
-                self.env.render()
                 # Actor picks an action
                 # Actor picks an action
                 action, action_onehot, prediction = self.act(state)
@@ -541,7 +539,6 @@ class PPOAgent:
             done = False
             score = 0
             while not done:
-                self.env.render()
                 action = np.argmax(self.Actor.predict(state)[0])
                 state, reward, done, _ = self.env.step(action)
                 state = np.reshape(state, [1, self.state_size[0]])
