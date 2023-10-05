@@ -31,7 +31,7 @@ import gym
 import random
 import os
 from tqdm import tqdm
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # -1:cpu, 0:first gpu
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'  # -1:cpu, 0:first gpu
 # tf.config.experimental_run_functions_eagerly(True) # used for debuging and development
 # usually using this for fastest performance
 tf.compat.v1.disable_eager_execution()
@@ -506,18 +506,18 @@ class PPOAgent:
                 actions.append(action)
                 rewards.append(reward)
             
-                # if np.mean(rewards) > max_reward:
-                #     max_reward = np.mean(rewards)
-                #     dir_path = os.getcwd()
-                #     #delete current
-                #     for filename in os.listdir(dir_path):
-                #         if filename.endswith(".h5"):
-                #             file_path = os.path.join(dir_path, filename)
-                #             try:
-                #                 os.remove(file_path)
-                #             except Exception as e:
-                #                 print(f"Error detected: {e}")
-                #     self.save()
+                if np.mean(rewards) > max_reward:
+                    max_reward = np.mean(rewards)
+                    dir_path = os.getcwd()
+                    #delete current
+                    for filename in os.listdir(dir_path):
+                        if filename.endswith(".h5"):
+                            file_path = os.path.join(dir_path, filename)
+                            try:
+                                os.remove(file_path)
+                            except Exception as e:
+                                print(f"Error detected: {e}")
+                    self.save()
                 dones.append(done)
                 predictions.append(prediction)
                 # Update current state
