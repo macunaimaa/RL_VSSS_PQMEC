@@ -65,7 +65,8 @@ class Environment(Process):
 
 
             if self.is_render and self.env_idx == 0:
-                self.env.render()
+                #self.env.render()
+                continue
 
             # Diagnostic print
             #print("Passing action to env.step:", action)
