@@ -70,8 +70,7 @@ class Environment(Process):
 
             # Ensure the action is an array with shape (2,)
             action = np.array(action).flatten()
-            assert action.shape == (
-                2,), f"Unexpected action shape: {action.shape}"
+
 
             if self.is_render and self.env_idx == 0:
                 self.env.render()
@@ -380,8 +379,8 @@ class PPOAgent:
         self.Critic.Critic.load_weights(self.Critic_name)
 
     def save(self):
-        self.Actor.Actor.save_weights(self.Actor_name)
-        self.Critic.Critic.save_weights(self.Critic_name)
+        self.Actor.Actor.save_weights(f"{self.Actor_name}_{self.epochs}")
+        self.Critic.Critic.save_weights(f"{self.Critic_name}_{self.epochs}")
 
     pylab.figure(figsize=(18, 9))
     pylab.subplots_adjust(left=0.05, right=0.98, top=0.96, bottom=0.06)
@@ -435,8 +434,6 @@ class PPOAgent:
                 # Ensure the action is an array with shape (2,)
                 action = np.array(action_onehot)
                 action.reshape([2, ])
-                assert action.shape == (
-                    2,), f"Unexpected action shape: {action.shape}"
 
                 # Retrieve new state, reward, and whether the state is terminal
                 next_state, reward, done, _ = self.env.step(action)
@@ -472,6 +469,7 @@ class PPOAgent:
         self.env.close()
 
     def run_batch(self):  # train every self.Training_batch episodes
+        global max_reward
         state = self.env.reset()
         state = np.reshape(state, [1, self.state_size[0]])
         done, score, SAVING = False, 0, ''
@@ -480,7 +478,6 @@ class PPOAgent:
             states, next_states, actions, rewards, predictions, dones = [], [], [], [], [], []
             for t in tqdm(range(self.Training_batch)):
                 self.env.render()
-                # Actor picks an action
                 # Actor picks an action
                 action, prediction = self.act(state)
 
@@ -492,8 +489,6 @@ class PPOAgent:
                 # print("action type", type(action))
                 # print("action:", action)
                 #action.reshape([2, ])
-                assert action.shape == (
-                    2,), f"Unexpected action shape: {action.shape}"
 
                 # Retrieve new state, reward, and whether the state is terminal
 
@@ -510,6 +505,19 @@ class PPOAgent:
                     next_state, [1, self.state_size[0]]))
                 actions.append(action)
                 rewards.append(reward)
+            
+                # if np.mean(rewards) > max_reward:
+                #     max_reward = np.mean(rewards)
+                #     dir_path = os.getcwd()
+                #     #delete current
+                #     for filename in os.listdir(dir_path):
+                #         if filename.endswith(".h5"):
+                #             file_path = os.path.join(dir_path, filename)
+                #             try:
+                #                 os.remove(file_path)
+                #             except Exception as e:
+                #                 print(f"Error detected: {e}")
+                #     self.save()
                 dones.append(done)
                 predictions.append(prediction)
                 # Update current state
@@ -632,9 +640,12 @@ class PPOAgent:
 
 
 if __name__ == "__main__":
+
+    max_reward = -100000
+
     env_name = 'VSS-v0'
     agent = PPOAgent(env_name)
     # agent.run() # train as PPO, train every epesode
     agent.run_batch()  # train as PPO, train every batch, trains better
-    # agent.run_multiprocesses(num_worker = 4)  # train PPO multiprocessed (fastest)
+    #agent.run_multiprocesses(num_worker = 8)  # train PPO multiprocessed (fastest)
     # agent.test()
