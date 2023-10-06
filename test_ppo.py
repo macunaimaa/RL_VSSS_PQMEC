@@ -10,7 +10,7 @@
 #
 #================================================================
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1' # -1:cpu, 0:first gpu
+os.environ['CUDA_VISIBLE_DEVICES'] = '0' # -1:cpu, 0:first gpu
 import random
 import gym
 import pylab
