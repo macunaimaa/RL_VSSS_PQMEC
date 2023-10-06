@@ -16,7 +16,7 @@ import gym
 import pylab
 import numpy as np
 import rsoccer_gym
-import tensorflow as tf
+import tensorflow[and_cuda] as tf
 from tensorboardX import SummaryWriter
 #tf.config.experimental_run_functions_eagerly(True) # used for debuging and development
 tf.compat.v1.disable_eager_execution() # usually using this for fastest performance
